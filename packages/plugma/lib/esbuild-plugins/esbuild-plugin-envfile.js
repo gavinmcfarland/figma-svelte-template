@@ -34,7 +34,6 @@ const envfilePlugin = (options = {}) => {
 			// Load environment variables from the appropriate file
 			if (envFile) {
 				const envConfig = dotenv.parse(readFileSync(envFile));
-
 				for (const key in envConfig) {
 					if (!process.env[key]) {
 						process.env[key] = envConfig[key];

@@ -18,6 +18,7 @@ import { viteSingleFile } from "vite-plugin-singlefile";
 import _ from 'lodash';
 import { Log } from '../lib/logger.js'
 import lodashTemplate from 'lodash.template'
+import dotenv from 'dotenv'
 
 const CURR_DIR = process.cwd();
 const __dirname = dirname(fileURLToPath(import.meta.url));
@@ -179,6 +180,9 @@ function createViteConfigs(options, data) {
 		server: {
 			port: options.port,
 			logLevel: 'silent',
+			// watch: {
+			// 	ignored: ['**/.env*']
+			// }
 		},
 	};
 
@@ -260,58 +264,162 @@ async function bundleMainWithEsbuild(data, shouldWatch, callback, NODE_ENV, opti
 
 		if (command === "dev" || (command === "build" && options.watch)) {
 
+			// NOTE: errors with entry point
+			// const server = await createServer({
+			// 	configFile: false, // Avoid using the default Vite config file
+			// 	root: process.cwd(), // Set the root directory
+			// 	mode: options.mode,
+			// 	define: {
+			// 		'process.env.NODE_ENV': JSON.stringify(options.mode),
+			// 	},
+			// 	server: {
+			// 		port: 3000, // You can specify the port here
+			// 		// open: true, // Open the browser when the server starts
+			// 		watch: {}, // Watch for file changes
+			// 	},
+			// 	build: {
+			// 		lib: {
+			// 			entry: tempFilePath, // Entry file for backend code
+			// 			formats: ['cjs'], // Output format, CommonJS for Node.js
+			// 		},
+			// 		rollupOptions: {
+			// 			output: {
+			// 				dir: 'dist', // Output directory
+			// 				entryFileNames: 'main.js', // Name of the output file
+			// 				inlineDynamicImports: true, // Inline all imports into one file
+			// 			},
+			// 		},
+			// 		resolve: {
+			// 			extensions: ['.ts', '.js'], // Resolve TypeScript and JavaScript files
+			// 		},
+			// 		target: 'chrome58',
+			// 		sourcemap: false, // Set to true if you want source maps
+			// 		minify: false, // Set to true if you want minification
+			// 		emptyOutDir: false,
+			// 		watch: {}, // Enables watching for file changes
+			// 	},
+			// });
 
-			let ctx = await esbuild.context({
-				entryPoints: [tempFilePath],
-				outfile: `dist/main.js`,
-				format: 'esm',
-				bundle: true,
-				target: 'es2016',
-				define: {
-					'process.env.NODE_ENV': JSON.stringify(options.mode),
-				},
-				plugins: [
-					envfilePlugin({
-						envPath: '.env',
-						envTestPath: '.env.test',
-						envDevelopmentPath: '.env.development',
-					}),
-					{
-						name: 'rebuild-notify',
-						setup(build) {
-							// build.onLoad({ filter: /\.txt$/ }, async (args) => {
-							// 	let text = await fs.promises.readFile(args.path, 'utf8')
-							// 	return {
-							// 		contents: JSON.stringify(text.split(/\s+/)),
-							// 		loader: 'json',
-							// 	}
-							// })
-							// build.onStart(() => {
-							// 	tempFilePath = writeTempFile(fileName)
-							// 	console.log('build started')
-							// })
-							// build.onStart(() => {
-							// 	console.log('Rebuilding...');
-							// });
-							build.onEnd(async result => {
-								console.log(`${chalk.grey(formatTime())} ${chalk.cyan.bold('[esbuild]')} ${chalk.green('rebuilt')} ${chalk.grey('/dist/main.js')}`)
-								// console.log(`main.ts built with ${result.errors.length} errors`);
-								// HERE: somehow restart the server from here, e.g., by sending a signal that you trap and react to inside the server.
-								// await fs.unlink(tempFilePath, (err => {
-								// 	if (err) console.log(err);
-								// }));
-							})
-						}
-						,
-					},
-					replace({
-						'__buildVersion': '"1.0.0"',
-					})
-				],
-			});
-			await ctx.watch();
+			// await server.listen();
 
+			// console.log(`Vite server running at http://localhost:3000`);
 
+			// NOTE: Issue when updating env, causes an errror when server resets, it causes server to crash
+			function loadEnv() {
+				dotenv.config();
+				return process.env;
+			}
+
+			let envVars = loadEnv();
+
+			let isRebuilding = false;
+
+			async function rebuild() {
+				if (isRebuilding) {
+					console.log('Rebuild already in progress. Skipping.');
+					return;
+				}
+
+				isRebuilding = true;
+				console.log('Rebuilding...');
+
+				try {
+					await build({
+						mode: options.mode,
+						define: {
+							'process.env.NODE_ENV': JSON.stringify(options.mode),
+						},
+						build: {
+							lib: {
+								entry: tempFilePath, // Entry file for backend code
+								formats: ['cjs'],    // Output format, CommonJS for Node.js
+							},
+							rollupOptions: {
+								output: {
+									dir: 'dist',               // Output directory
+									entryFileNames: 'main.js', // Name of the output file
+									inlineDynamicImports: true, // Inline all imports into one file
+								},
+							},
+							resolve: {
+								extensions: ['.ts', '.js'],  // Resolve TypeScript and JavaScript files
+							},
+							target: 'chrome58',
+							sourcemap: false,  // Set to true if you want source maps
+							minify: false,     // Set to true if you want minification
+							emptyOutDir: false,
+							// watch: {}
+						},
+					});
+				} catch (err) {
+					console.error('Error during rebuild:', err);
+				} finally {
+					isRebuilding = false;
+					console.log('Rebuild complete.');
+				}
+			}
+
+			// // Watch for changes to .env file
+			// fs.watch(`${process.cwd()}/.env.test`, (eventType, filename) => {
+			// 	if (eventType === 'change') {
+			// 		console.log(`.env file changed: ${filename}`);
+			// 		envVars = loadEnv(); // Reload environment variables
+			// 		// rebuild(); // Trigger rebuild
+			// 	}
+			// });
+
+			// Initial build
+			rebuild();
+
+			// let ctx = await esbuild.context({
+			// 	entryPoints: [tempFilePath],
+			// 	outfile: `dist/main.js`,
+			// 	format: 'esm',
+			// 	bundle: true,
+			// 	target: 'es2016',
+			// 	define: {
+			// 		'process.env.NODE_ENV': JSON.stringify(options.mode),
+			// 	},
+			// 	plugins: [
+			// 		envfilePlugin({
+			// 			envPath: '.env',
+			// 			envTestPath: '.env.test',
+			// 			envDevelopmentPath: '.env.development',
+			// 		}),
+			// 		{
+			// 			name: 'rebuild-notify',
+			// 			setup(build) {
+			// 				// build.onLoad({ filter: /\.txt$/ }, async (args) => {
+			// 				// 	let text = await fs.promises.readFile(args.path, 'utf8')
+			// 				// 	return {
+			// 				// 		contents: JSON.stringify(text.split(/\s+/)),
+			// 				// 		loader: 'json',
+			// 				// 	}
+			// 				// })
+			// 				// build.onStart(() => {
+			// 				// 	tempFilePath = writeTempFile(fileName)
+			// 				// 	console.log('build started')
+			// 				// })
+			// 				// build.onStart(() => {
+			// 				// 	console.log('Rebuilding...');
+			// 				// });
+			// 				build.onEnd(async result => {
+			// 					console.log(`${chalk.grey(formatTime())} ${chalk.cyan.bold('[esbuild]')} ${chalk.green('rebuilt')} ${chalk.grey('/dist/main.js')}`)
+			// 					// console.log(`main.ts built with ${result.errors.length} errors`);
+			// 					// HERE: somehow restart the server from here, e.g., by sending a signal that you trap and react to inside the server.
+			// 					// await fs.unlink(tempFilePath, (err => {
+			// 					// 	if (err) console.log(err);
+			// 					// }));
+			// 				})
+			// 			}
+			// 			,
+			// 		},
+			// 		replace({
+			// 			'__buildVersion': '"1.0.0"',
+			// 		})
+			// 	],
+			// });
+			// await ctx.watch();
 
 		} else {
 			// Fix me, needs to output js file
