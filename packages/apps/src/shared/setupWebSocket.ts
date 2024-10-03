@@ -2,6 +2,7 @@ import ReconnectingWebSocket from 'reconnecting-websocket'
 import { Log } from '../../../plugma/lib/logger'
 import { localClientConnected, remoteClients, localClientId } from './stores' // Import the Svelte stores
 import { get } from 'svelte/store'
+import { v4 as uuidv4 } from 'uuid' // Generate client-side UUID
 
 const log = new Log({
 	debug: window.runtimeData.debug,
@@ -24,6 +25,9 @@ export function setupWebSocket(
 	let openCallbacks: (() => void)[] = []
 	let closeCallbacks: (() => void)[] = []
 	let pingInterval: number
+
+	// Generate the clientId on the client side
+	const clientId = uuidv4()
 
 	const mockWebSocket = {
 		send: (data) => {
@@ -96,18 +100,51 @@ export function setupWebSocket(
 				}
 			})
 		} else if (via === 'ws' && enableWebSocket) {
-			ws.addEventListener('message', (event) => {
+			ws.addEventListener('message', async (event) => {
+				let messageText
+
+				// Check if the message is a Blob
+				if (event.data instanceof Blob) {
+					messageText = await event.data.text() // Convert Blob to text
+				} else {
+					messageText = event.data // Handle text data
+				}
+
+				let parsedData
 				try {
-					const parsedData = JSON.parse(event.data)
+					parsedData = JSON.parse(messageText) // Attempt to parse the message as JSON
 					const newEvent = { ...event, data: parsedData }
 					callback(newEvent)
+					handleWebSocketMessage(parsedData) // Call the handler for specific message events
 				} catch (error) {
 					console.error('Failed to parse WebSocket message data:', error)
-					callback(event)
+					callback(event) // If parsing fails, pass the raw event to the callback
 				}
 			})
 		} else {
 			console.warn(`Cannot add message listener via ${via}.`)
+		}
+	}
+
+	function handleWebSocketMessage(message) {
+		if (message.pluginMessage) {
+			if (message.pluginMessage.event === 'pong') {
+				log.info('Received pong from server')
+			}
+
+			if (message.pluginMessage.event === 'client_list') {
+				const connectedClients = message.pluginMessage.clients || []
+				remoteClients.set(connectedClients)
+			}
+
+			// Handle client connection and disconnection events
+			if (message.pluginMessage.event === 'client_connected') {
+				remoteClients.update((clients) => [...clients, message.pluginMessage.clientId])
+			} else if (message.pluginMessage.event === 'client_disconnected') {
+				remoteClients.update((clients) =>
+					clients.filter((clientId) => clientId !== message.pluginMessage.clientId)
+				)
+			}
 		}
 	}
 
@@ -164,10 +201,12 @@ export function setupWebSocket(
 				sendMessageToTargets(message, via)
 			}
 
-			// Handle local client connection (not inside iframe or Figma)
-			if (!(isInsideIframe || isInsideFigma)) {
-				localClientConnected.set(true)
-			}
+			ws.send(
+				JSON.stringify({
+					pluginMessage: { event: 'client_connected', clientId },
+					pluginId: '*',
+				})
+			)
 
 			pingInterval = window.setInterval(() => {
 				if (ws.readyState === WebSocket.OPEN) {
@@ -178,84 +217,7 @@ export function setupWebSocket(
 						})
 					)
 				}
-			}, 10000)
-		}
-
-		ws.onmessage = (event) => {
-			try {
-				log.info('Received raw WebSocket message:', event.data)
-
-				if (!event.data) {
-					log.warn('Received empty message')
-					return
-				}
-
-				let message
-				try {
-					message = JSON.parse(event.data)
-				} catch (error) {
-					log.warn('Failed to parse WebSocket message:', event.data)
-					return
-				}
-
-				if (message.pluginMessage) {
-					if (message.pluginMessage.event === 'ping') {
-						ws.send(
-							JSON.stringify({
-								pluginMessage: { event: 'pong' },
-								pluginId: '*',
-							})
-						)
-					}
-
-					if (message.pluginMessage.event === 'client_list') {
-						if (!(isInsideIframe || isInsideFigma)) {
-							const connectedClients = message.pluginMessage.clients || []
-							remoteClients.set(connectedClients) // Set the connected clients
-						}
-					}
-
-					// Handle remote client connection and disconnection events
-					if (message.pluginMessage.event === 'client_connected') {
-						console.log(`Client connected: ${message.pluginMessage.clientId}`)
-
-						// How can I set the localClientId if it doesn't exist?
-						if (!get(localClientId)) {
-							if (!(isInsideIframe || isInsideFigma)) {
-								localClientId.set(message.pluginMessage.clientId)
-							}
-						}
-
-						// Handle remote clients only when inside iframe or Figma
-						if (!(isInsideIframe || isInsideFigma)) {
-							remoteClients.update((clients) => [...clients, message.pluginMessage.clientId])
-						}
-					} else if (message.pluginMessage.event === 'client_disconnected') {
-						console.log(`Client disconnected: ${message.pluginMessage.clientId}`)
-
-						// Handle remote clients only when inside iframe or Figma
-						if (!(isInsideIframe || isInsideFigma)) {
-							remoteClients.update((clients) =>
-								clients.filter((clientId) => clientId !== message.pluginMessage.clientId)
-							)
-						}
-					}
-				}
-			} catch (error) {
-				log.error('Error in message listener:', error)
-			}
-		}
-
-		ws.onclose = () => {
-			clearInterval(pingInterval)
-			closeCallbacks.forEach((cb) => cb && cb())
-
-			// Handle local client disconnection (not inside iframe or Figma)
-			if (!(isInsideIframe || isInsideFigma)) {
-				localClientConnected.set(false)
-			}
-
-			console.warn('WebSocket connection closed')
+			}, 10000) // Ping server every 10 seconds
 		}
 	}
 
