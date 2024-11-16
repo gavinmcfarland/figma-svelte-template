@@ -23,6 +23,9 @@
 
 	// Pass messages between parent and plugin window wrapper iframe
 	function relayFigmaMessages(ws) {
+		// window.addEventListener('message', (event) => {
+		// 	console.log('------- iiii', event.data)
+		// })
 		ws.on((event) => {
 			if (event.origin === 'https://www.figma.com') {
 				// forward to iframe and browser

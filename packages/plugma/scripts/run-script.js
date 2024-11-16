@@ -422,7 +422,7 @@ export async function runScript(command, options) {
 
 	task('start-websockets-server', async ({ options }) => {
 		if (options.websockets) {
-			exec('node node_modules/plugma/lib/start-web-sockets-server.cjs');
+			// exec('node node_modules/plugma/lib/start-web-sockets-server.cjs');
 			log.text(`Preview: ${chalk.cyan('http://localhost:')}${chalk.bold.cyan(options.port)}${chalk.cyan('/')}`)
 		}
 	})

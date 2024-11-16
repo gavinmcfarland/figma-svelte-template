@@ -22,6 +22,13 @@ const wss = new WebSocket.Server({ server });
 // Map to store clients with their unique IDs and other info
 const clients = new Map();
 
+// Queues for storing messages for each source type
+const messageQueues = {
+	browser: [],
+	'plugin-window': [],
+	unknown: [],
+};
+
 wss.on('connection', (ws, req) => {
 	const clientId = uuidv4(); // Generate a unique ID for the client
 
@@ -35,40 +42,39 @@ wss.on('connection', (ws, req) => {
 	// Log the new connection with its source
 	console.log(`New client connected: ${clientId} (Source: ${clientSource}), ${req.url}`);
 
-	// Send a list of all connected clients, excluding the new client
-	// const otherClients = Array.from(clients.keys()).filter(id => id !== clientId);
-	// const otherClients = Array.from(clients.entries())
-	// 	.filter(([id, client]) =>
-	// 		client.source === 'browser'
-	// 	) // Filter by clientId and source 'browser'
-	// 	.map(([id, client]) => ({ id, source: client.source }));
+	// Send a list of all connected clients to the new client
+	ws.send(
+		JSON.stringify({
+			pluginMessage: {
+				event: 'client_list',
+				message: 'List of connected clients',
+				clients: Array.from(clients.entries()).map(([id, client]) => ({
+					id,
+					source: client.source,
+				})),
+				source: clientSource,
+			},
+			pluginId: '*',
+		})
+	);
 
-	ws.send(JSON.stringify({
-		pluginMessage: {
-			event: 'client_list',
-			message: 'List of connected clients',
-			clients: Array.from(clients.entries()).map(([id, client]) => ({ id, source: client.source })),
-			source: clientSource, // Add the source to the message
-		},
-		pluginId: "*"
-	}));
+	// Flush queued messages for this client source
+	flushQueue(clientSource);
 
 	// Broadcast the new connection to all other clients
-
-	broadcastMessage(JSON.stringify({
-		pluginMessage: {
-			event: 'client_connected',
-			message: `Client ${clientId} connected`,
-			client: {
-				id: clientId,
-				source: clientSource
+	broadcastMessage(
+		JSON.stringify({
+			pluginMessage: {
+				event: 'client_connected',
+				message: `Client ${clientId} connected`,
+				client: { id: clientId, source: clientSource },
+				source: clientSource,
 			},
-			source: clientSource, // Include the source in the broadcast message
-		},
-		pluginId: "*"
-	}), clientId);
-
-
+			pluginId: '*',
+		}),
+		clientId,
+		clientSource
+	);
 
 	// Set up initial client state
 	ws.isAlive = true;
@@ -86,47 +92,107 @@ wss.on('connection', (ws, req) => {
 		// Attach the source of the sender to the message
 		const messageWithSource = {
 			...parsedMessage,
-			source: clientSource // Include the client source in the outgoing message
+			source: clientSource, // Include the client source in the outgoing message
 		};
 
 		// Broadcast the message with source to other clients
-		broadcastMessage(JSON.stringify(messageWithSource), clientId);
+		broadcastMessage(JSON.stringify(messageWithSource), clientId, clientSource);
 	});
 
 	ws.on('close', () => {
 		clients.delete(clientId); // Remove the client on disconnect
 		console.log(`Client ${clientId} disconnected`);
 
-		let message = JSON.stringify({
+		const disconnectMessage = JSON.stringify({
 			pluginMessage: {
 				event: 'client_disconnected',
 				message: `Client ${clientId} disconnected`,
-				client: {
-					id: clientId,
-					source: clientSource
-				},
-				source: clientSource, // Include the source in the disconnection message
+				client: { id: clientId, source: clientSource },
+				source: clientSource,
 			},
-			pluginId: "*"
+			pluginId: '*',
 		});
 
 		// Broadcast the disconnection to all remaining clients
-		broadcastMessage(message, clientId);
+		broadcastMessage(disconnectMessage, clientId, clientSource);
 	});
 });
 
-// Function to broadcast messages to clients except the sender
-function broadcastMessage(message, senderId) {
-	clients.forEach(({ ws }, clientId) => {
-		if (clientId !== senderId && ws.readyState === WebSocket.OPEN) {
-			ws.send(message);
+// Function to broadcast messages between specific sources
+function broadcastMessage(message, senderId, senderSource) {
+	const targetSource = senderSource === 'browser' ? 'plugin-window' : 'browser';
+	const parsedMessage = JSON.parse(message);
+
+	// Exclude messages with specific events from being queued
+	if (
+		parsedMessage.pluginMessage?.event === 'client_connected' ||
+		parsedMessage.pluginMessage?.event === 'client_disconnected' ||
+		parsedMessage.pluginMessage?.event === 'ping' ||
+		parsedMessage.pluginMessage?.event === 'pong'
+	) {
+		console.log(`Skipping queue for event: ${parsedMessage.pluginMessage.event}`);
+	} else {
+		let sent = false;
+
+		clients.forEach(({ ws, source }, clientId) => {
+			if (clientId !== senderId && source === targetSource) {
+				if (ws.readyState === WebSocket.OPEN) {
+					ws.send(message);
+					console.log(`Message sent directly to client ${clientId} (source: ${source})`, message);
+					sent = true;
+				}
+			}
+		});
+
+		// Queue the message if no target clients are currently connected
+		if (!sent) {
+			console.log(`No active ${targetSource} clients, queuing message:`, message);
+			messageQueues[targetSource].push(message);
 		}
-	});
+	}
+}
+
+// Function to flush the message queue for a specific source type
+
+function flushQueue(targetSource) {
+	const targetClients = Array.from(clients.values()).filter(
+		(client) => client.source === targetSource && client.ws.readyState === WebSocket.OPEN
+	);
+
+	if (targetClients.length > 0) {
+		console.log(`Flushing ${messageQueues[targetSource].length} messages to ${targetSource} clients`);
+
+		// Remove excluded messages from the queue before sending
+		messageQueues[targetSource] = messageQueues[targetSource].filter((msg) => {
+			const parsedMessage = JSON.parse(msg);
+
+			if (
+				parsedMessage.pluginMessage?.event === 'client_connected' ||
+				parsedMessage.pluginMessage?.event === 'client_disconnected' ||
+				parsedMessage.pluginMessage?.event === 'ping' ||
+				parsedMessage.pluginMessage?.event === 'pong'
+			) {
+				console.log(`Skipping queue flush for event: ${parsedMessage.pluginMessage.event}`);
+				return false; // Exclude these messages from the queue
+			}
+
+			return true;
+		});
+
+		targetClients.forEach((client) => {
+			messageQueues[targetSource].forEach((msg) => {
+				client.ws.send(msg);
+				console.log(`Message from queue sent to ${client.source} client:`, msg);
+			});
+		});
+
+		messageQueues[targetSource] = []; // Clear the queue after flushing
+	}
 }
 
 // Check connection status and send pings every 10 seconds
 setInterval(() => {
-	wss.clients.forEach(ws => {
+	wss.clients.forEach((ws) => {
 		if (!ws.isAlive) {
 			console.log(`Terminating connection ${ws.clientId}`);
 			return ws.terminate();

@@ -71,11 +71,16 @@ export function setupWebSocket(
 	function postMessageVia(via, message) {
 		log.info(`--- ws post, ${via}`, message)
 		if (via === 'iframe' && iframeTarget && iframeTarget.contentWindow.postMessage) {
+			console.log('post message to iframe', message)
 			iframeTarget.contentWindow.postMessage(message, '*')
 		} else if (via === 'parent' && window.parent) {
 			window.parent.postMessage(message, '*')
+		} else if (via === 'window') {
+			console.log('Posting message to window:', message)
+			window.postMessage(message, '*')
 		} else if (via === 'ws') {
 			if (enableWebSocket) {
+				console.log('post message to ws', Boolean(ws), ws.readyState, WebSocket.OPEN, message)
 				if (!ws || ws.readyState !== WebSocket.OPEN) {
 					// console.warn('WebSocket is disabled or not open, queuing message:', message)
 					messageQueue.push({ message, via })
@@ -205,6 +210,7 @@ export function setupWebSocket(
 				let message
 				try {
 					message = JSON.parse(event.data)
+					sendMessageToTargets(message, 'window')
 				} catch (error) {
 					log.warn('Failed to parse WebSocket message:', event.data)
 					return
