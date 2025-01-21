@@ -3,7 +3,7 @@
 ## Usage
 
 ```js
-import { Task, taskCaller as main } from './task-runner/taskrunner'
+import { Task, taskCaller as main } from './task-runner/taskrunner.js'
 
 // Example usage
 const command = 'dev' // or 'preview'

@@ -1,0 +1,12 @@
+{
+  "recommendations": [
+    "streetsidesoftware.code-spell-checker",
+    "streetsidesoftware.code-spell-checker-portuguese",
+    "streetsidesoftware.code-spell-checker-portuguese-brazilian",
+    "ms-vsliveshare.vsliveshare",
+    "svelte.svelte-vscode",
+    "gplane.dprint2",
+    "biomejs.biome",
+    "oven.bun-vscode"
+  ]
+}

@@ -1,0 +1,61 @@
+{
+  "editor.formatOnSave": true,
+  "editor.codeActionsOnSave": {
+    "source.fixAll": "always",
+    "source.organizeImports": "always",
+    "quickfix.biome": "always"
+  },
+  "editor.defaultFormatter": "gplane.dprint2",
+  "[javascript]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  },
+  "[svelte]": {
+    "editor.defaultFormatter": "svelte.svelte-vscode"
+  },
+  "explorer.fileNesting.enabled": true,
+  "explorer.fileNesting.patterns": {
+    "Config Files.md": "biome.*, dprint.*, .env*, *.cjs, *.config.ts, *.setup.ts, .git*, *.config, *.config.json, *config.js, *config.mjs, *config.cjs, *config.ts, *config.toml, *config.yaml, *config.yml, *rc, *rc.json, *rc.js, *rc.mjs, *rc.cjs, *rc.ts, *rc.toml, *rc.yaml, *rc.yml, *ignore, Dockerfile*, docker-*, *.toml, package-lock.json, yarn.lock, pnpm-lock.yaml, .prototools, rollup.*, renovate.json, .size-limit.*, vitest*",
+    "*.json": "${capture}.lock"
+  },
+  "search.exclude": {
+    "**/coverage": true,
+    "**/dist": true,
+    "**/node_modules": true
+  },
+  "typescript.enablePromptUseWorkspaceTsdk": true,
+  "typescript.preferences.autoImportFileExcludePatterns": ["dist/**"],
+  "typescript.tsdk": "node_modules/typescript/lib",
+  "cSpell.words": [
+    "@endindex",
+    "antfu",
+    "Automator",
+    "biomejs",
+    "clickoutside",
+    "commitlint",
+    "conventionalcommits",
+    "dprint",
+    "endindex",
+    "Fong",
+    "stylelint",
+    "texthighlight",
+    "tokilabs",
+    "typecheck"
+  ],
+  "gutterpreview.enableReferenceLookup": true,
+  "gutterpreview.currentColorForSVG": "#CCC",
+  "svelte.enable-ts-plugin": true,
+  "svelte-autoimport.doubleQuotes": false,
+  "svelte.plugin.svelte.format.config.singleQuote": true,
+  "prettier.jsxSingleQuote": true,
+  "prettier.singleQuote": true,
+  "yaml.format.singleQuote": true,
+  "[jsonc]": {
+    "editor.defaultFormatter": "biomejs.biome"
+  }
+}

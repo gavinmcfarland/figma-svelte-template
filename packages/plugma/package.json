@@ -1,44 +1,60 @@
 {
-	"name": "plugma",
-	"version": "1.2.7",
-	"description": "",
-	"main": "index.js",
-	"type": "module",
-	"bin": {
-		"plugma": "./bin/cli.js"
-	},
-	"scripts": {
-		"test": "echo \"Error: no test specified\"",
-		"build-apps": "cd ../apps && npm run build",
-		"copy-apps": "node scripts/copy-files.js",
-		"build-and-copy-apps": "npm run build-apps && npm run copy-apps",
-		"prepublishOnly": "npm run build-and-copy-apps",
-		"copy-workflows": "cp -r ./templates/github/ .github/",
-		"postinstall": "node ./migration/v1/check-migration.js"
-	},
-	"jest": {
-		"transform": {}
-	},
-	"author": "",
-	"license": "ISC",
-	"dependencies": {
-		"chalk": "^5.3.0",
-		"chokidar": "^4.0.1",
-		"commander": "^12.1.0",
-		"express": "^4.18.2",
-		"fs-extra": "^11.2.0",
-		"inquirer": "^12.0.0",
-		"lodash": "^4.17.21",
-		"prettier": "^3.3.3",
-		"semver": "^7.6.3",
-		"uuid": "^10.0.0",
-		"vite": "^5.0.4",
-		"vite-plugin-singlefile": "^0.13.5",
-		"ws": "^8.16.0"
-	},
-	"devDependencies": {
-		"@babel/preset-env": "^7.26.0",
-		"babel-jest": "^29.7.0",
-		"jest": "^29.7.0"
-	}
+  "name": "plugma",
+  "version": "1.2.7",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "bin": {
+    "plugma": "./bin/cli.js"
+  },
+  "scripts": {
+    "build-and-copy-apps": "npm run build-apps && npm run copy-apps",
+    "build-apps": "cd ../apps && npm run build",
+    "build": "tsc",
+    "check": "tsc --noEmit",
+    "clean": "rm -rf dist/*",
+    "copy-apps": "node scripts/copy-files.js",
+    "copy-workflows": "cp -r ./templates/github/ .github/",
+    "dev": "concurrently -n tsc,biome 'nr check --watch' 'nr lint --watch'",
+    "lint:fix": "biome check --fix .",
+    "lint:unsafe-fix": "biome check --unsafe-fix .",
+    "lint": "biome check .",
+    "postinstall": "node ./migration/v1/check-migration.js",
+    "prepublishOnly": "npm run build-and-copy-apps",
+    "test:coverage": "vitest --run --coverage",
+    "test:watch": "vitest",
+    "test": "vitest --run"
+  },
+  "jest": {
+    "transform": {}
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "chalk": "^5.3.0",
+    "chokidar": "^4.0.1",
+    "commander": "^12.1.0",
+    "express": "^4.18.2",
+    "fs-extra": "^11.2.0",
+    "inquirer": "^12.0.0",
+    "lodash": "^4.17.21",
+    "prettier": "^3.3.3",
+    "semver": "^7.6.3",
+    "uuid": "^10.0.0",
+    "vite": "^5.0.4",
+    "vite-plugin-singlefile": "^0.13.5",
+    "ws": "^8.16.0"
+  },
+  "devDependencies": {
+    "@antfu/ni": "^23.2.0",
+    "@babel/preset-env": "^7.26.0",
+    "@figma/plugin-typings": "^1.107.0-beta.1",
+    "@types/express": "^5.0.0",
+    "@types/fs-extra": "^11.0.4",
+    "@types/react": "^19.0.7",
+    "@types/react-dom": "^19.0.3",
+    "@types/uuid": "^10.0.0",
+    "@types/ws": "^8.5.13",
+    "typescript": "^5.7.3"
+  }
 }

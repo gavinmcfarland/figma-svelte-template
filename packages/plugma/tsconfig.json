@@ -2,9 +2,15 @@
   "compilerOptions": {
     "esModuleInterop": true,
     "isolatedModules": true,
-    "lib": ["DOM", "ES2020"],
-    "module": "ES2020",
-    "moduleResolution": "Node",
-    "strict": true
-  }
+    "skipLibCheck": true,
+    "lib": ["DOM", "esnext"],
+    "module": "esnext",
+    "target": "esnext",
+    "moduleResolution": "node",
+    "outDir": "./dist",
+    "strict": true,
+    "resolveJsonModule": true,
+    "types": ["@figma/plugin-typings"]
+  },
+  "exclude": ["archive", "dist", "node_modules"]
 }
