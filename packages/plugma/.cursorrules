@@ -1,0 +1,5 @@
+- Your notes folder is `.claude-notes` (at the root of the workspace or projects in monorepos) is yours to use. Only you will ever read the contents in there. Use it to store plans, task lists, notes, learnings, and important reminders for you.
+- Always use "~~~" for code blocks inside markdown files
+- when importing node native modules, like fs or url, always prepend them with 'node:', like in 'node:fs' and 'node:url'
+- Always document exported functions, classes, types, etc with a robust TSDoc comment. Also document complex functions, even if not exported.
+- Use "for ... of" loops instead `.forEach`.

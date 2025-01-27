@@ -1,0 +1,71 @@
+{
+  // See https://go.microsoft.com/fwlink/?LinkId=733558
+  // for the documentation about the tasks.json format
+  "version": "2.0.0",
+  "tasks": [
+    {
+      "label": "Wait for it",
+      "detail": "Sleeps for 10 seconds",
+      "type": "shell",
+      "command": "sleep 10",
+      "isBackground": false,
+      "windows": {
+        "command": "ping 127.0.0.1 -n 10 > nul"
+      },
+      "runOptions": {
+        "instanceLimit": 1,
+      },
+      "promptOnClose": false,
+      "hide": false,
+      "presentation": {
+
+        "reveal": "never",
+        "panel": "dedicated",
+        "showReuseMessage": false,
+        "close": true,
+        "echo": false
+      },
+      "problemMatcher": []
+    },
+    {
+      "label": "RunFigma",
+      "type": "shell",
+      "command": "/Applications/Figma.app/Contents/MacOS/Figma",
+      "detail": "Runs figma with remote debugging and inspect enabled",
+      "isBackground": true,
+      "args": [
+        "--args",
+        "--remote-debugging-port=9222",
+        "--inspect",
+        "--log-level=2",
+        "-v=2",
+        "--no-sandbox",
+        "--log-file=${workspaceFolder}/figma.log"
+      ],
+      "promptOnClose": true,
+      "runOptions": {
+        "instanceLimit": 1
+      },
+      "presentation": {
+        "echo": true,
+        "reveal": "always",
+        "focus": false,
+        "panel": "new",
+        "showReuseMessage": true,
+        "clear": false
+      },
+      "problemMatcher": {
+        "owner": "electron",
+        "fileLocation": "autoDetect",
+        "pattern": {
+          "regexp": "^(.*):(\\d+):(\\d+):\\s+(warning|error):\\s+(.*)$",
+          "file": 1,
+          "line": 2,
+          "column": 3,
+          "severity": 4,
+          "message": 5
+        }
+      }
+    }
+  ]
+}

@@ -1,0 +1,121 @@
+/// <reference types="@figma/plugin-typings" />
+import { registry, type TestFunction } from "../testing";
+
+declare global {
+	var testWs: WebSocket | undefined;
+}
+
+/**
+ * Message types that can be sent to the plugin
+ */
+type PluginMessage = {
+	type: "RUN_IN_FIGMA" | "RUN_TEST";
+	fnString?: string;
+	testName?: string;
+};
+
+/**
+ * Handles communication with the Figma plugin through WebSocket
+ * @param message The message to send to the plugin
+ * @returns A promise that resolves with the plugin's response
+ */
+async function sendPluginMessageViaWS<T>(message: PluginMessage): Promise<T> {
+	// Create WebSocket connection if not exists
+	if (!globalThis.testWs) {
+		const ws = new WebSocket("ws://localhost:9001?source=test");
+		await new Promise<void>((resolve, reject) => {
+			ws.onopen = () => resolve();
+			ws.onerror = (error: Event) => reject(error);
+		});
+		globalThis.testWs = ws;
+	}
+
+	const ws = globalThis.testWs;
+	return new Promise((resolve, reject) => {
+		// Send the message to the plugin
+		ws.send(
+			JSON.stringify({
+				pluginMessage: message,
+				pluginId: "*",
+			}),
+		);
+
+		// Listen for the result
+		const handler = (event: MessageEvent) => {
+			const response = JSON.parse(event.data.toString()).pluginMessage;
+			if (response?.type === "RUN_IN_FIGMA_RESULT") {
+				ws.removeEventListener("message", handler);
+				if (response.error) {
+					reject(new Error(response.error));
+				} else {
+					console.log("Received from Figma:", response.result);
+					resolve(response.result);
+				}
+			}
+		};
+
+		ws.addEventListener("message", handler);
+	});
+}
+
+/**
+ * Registers or executes a test function depending on the context
+ * @param testName The name of the test
+ * @param fn The test function to register or execute
+ * @returns The test result when executed from outside Figma
+ */
+export async function testInFigma<T>(
+	testName: string,
+	fn: TestFunction,
+) {
+	if (typeof figma === "undefined") {
+		console.log("running from console/test environment");
+		console.log(
+			`Sending plugin message: ${JSON.stringify({
+				type: "RUN_TEST",
+				testName,
+				// fnString: fn.toString()
+			})}`,
+		);
+
+
+		// When running from console/test environment
+		return sendPluginMessageViaWS<T>({
+			type: "RUN_TEST",
+			testName,
+			//   fnString: fn.toString()
+		});
+	}
+
+	// When running inside Figma, register the test
+	registry.register(testName, fn);
+}
+
+export async function runInFigma<T>(fn: () => Promise<T> | T): Promise<T> {
+	return sendPluginMessageViaWS<T>({
+		type: "RUN_IN_FIGMA",
+		fnString: fn.toString(),
+	});
+}
+
+// If we're in Figma, set up message handler for test execution
+if (typeof figma !== "undefined") {
+	console.log("Registering RUN_TEST message handler");
+	figma.ui.onmessage = async (msg: { type: string; testName?: string }) => {
+		console.log("[message]", msg);
+		if (msg.type === "RUN_TEST" && msg.testName) {
+			try {
+				const result = await registry.runTest(msg.testName);
+				figma.ui.postMessage({
+					type: "RUN_IN_FIGMA_RESULT",
+					result,
+				});
+			} catch (error) {
+				figma.ui.postMessage({
+					type: "RUN_IN_FIGMA_RESULT",
+					error: error instanceof Error ? error.message : String(error),
+				});
+			}
+		}
+	};
+}

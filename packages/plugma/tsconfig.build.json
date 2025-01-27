@@ -8,7 +8,7 @@
     "target": "esnext",
     "moduleResolution": "node",
     "outDir": "./dist",
-    "rootDir": "./",
+    "rootDir": "./src",
     "strict": true,
     "resolveJsonModule": true,
     "types": ["@figma/plugin-typings"],
@@ -27,11 +27,14 @@
       "#tests/*": ["../tests/*"]
     }
   },
-  "include": [
-    "src/**/*.ts",
-    "src/**/*.tsx",
-    "archive/demo.ts",
-    "archive/helpers.ts"
-  ],
-  "exclude": ["archive", "dist", "node_modules"]
+  "include": ["src/**/*.ts", "src/**/*.tsx"],
+  "exclude": [
+    "archive",
+    "dist",
+    "node_modules",
+    "tests",
+    "**/*.test.ts",
+    "**/*.test.tsx",
+    "**/__tests__/**"
+  ]
 }

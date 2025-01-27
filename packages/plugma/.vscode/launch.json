@@ -1,0 +1,94 @@
+{
+  "version": "0.2.0",
+  "compounds": [
+    {
+      "name": "Run Figma then Attach",
+      "configurations": ["Run Figma", "Wait to Attach to Figma"],
+      "stopAll": false,
+      "presentation": {
+        "hidden": false,
+        // __ will place this at the top of the debug menu
+        "group": "__",
+        "order": 1
+      }
+    }
+  ],
+  "configurations": [
+    {
+      "name": "Run Figma",
+      "type": "node",
+      "request": "launch",
+      "cwd": "${workspaceFolder}",
+      "internalConsoleOptions": "neverOpen",
+      "runtimeExecutable": "/Applications/Figma.app/Contents/MacOS/Figma",
+      "runtimeArgs": [
+        "--args",
+        "--remote-debugging-port=9222",
+        "--inspect",
+        "--log-level=2",
+        "-v=2"
+      ],
+      "outputCapture": "std",
+      "autoAttachChildProcesses": true,
+      "console": "integratedTerminal",
+      "presentation": {
+        "hidden": false,
+        "group": "Figma",
+        "order": 1
+      }
+    },
+    {
+      "name": "Debug Jest Tests",
+      "type": "node",
+      "request": "launch",
+      "runtimeArgs": [
+        "--inspect-brk",
+        "${workspaceRoot}/../../../../node_modules/.bin/jest",
+        "--runInBand"
+      ],
+      "console": "integratedTerminal",
+      "internalConsoleOptions": "neverOpen"
+    },
+    {
+      "preLaunchTask": "Wait for it",
+      "name": "Wait to Attach to Figma",
+      "type": "chrome",
+      "request": "attach",
+      "address": "localhost",
+      "port": 9222,
+      "targetSelection": "pick",
+      "pauseForSourceMap": true,
+      "pathMapping": {
+        "/file/": "${workspaceFolder}/",
+        "../src/": "${workspaceFolder}/src/",
+        "src/": "${workspaceFolder}/src/"
+      },
+      "presentation": {
+        "hidden": true,
+        "group": "Figma",
+        "order": 2
+      },
+      "internalConsoleOptions": "openOnSessionStart"
+    },
+    {
+      "name": "Attach to Figma",
+      "type": "chrome",
+      "request": "attach",
+      "address": "localhost",
+      "port": 9222,
+      "targetSelection": "pick",
+      "pauseForSourceMap": true,
+      "pathMapping": {
+        "/file/": "${workspaceFolder}/",
+        "../src/": "${workspaceFolder}/src/",
+        "src/": "${workspaceFolder}/src/"
+      },
+      "presentation": {
+        "hidden": false,
+        "group": "Figma",
+        "order": 2
+      },
+      "internalConsoleOptions": "openOnSessionStart"
+    }
+  ]
+}
