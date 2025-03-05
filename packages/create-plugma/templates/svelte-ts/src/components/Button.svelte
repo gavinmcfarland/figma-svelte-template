@@ -1,5 +1,13 @@
 <script lang="ts">
-	let { children, href, target, style, onclick } = $props()
+	interface Props {
+        children: () => any;
+        href?: string;
+        target?: string;
+        style?: string;
+        onclick?: () => void;
+	}
+
+	let { children, href, target, style, onclick }: Props = $props()
 </script>
 
 {#if href}

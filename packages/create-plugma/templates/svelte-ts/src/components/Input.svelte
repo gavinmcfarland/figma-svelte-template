@@ -1,5 +1,11 @@
 <script lang="ts">
-	let { value = $bindable(''), type = 'text', showIcon } = $props()
+	interface Props {
+		value?: string | number
+		type?: string
+		showIcon?: boolean
+	}
+
+	let { value = $bindable(''), type = 'text', showIcon }: Props = $props()
 </script>
 
 <div class="Input" data-non-interactive="true">
